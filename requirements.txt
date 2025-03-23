@@ -3,6 +3,7 @@ asgiref==3.8.1
 blis==1.2.0
 catalogue==2.0.10
 certifi==2025.1.31
+cffi==1.17.1
 charset-normalizer==3.4.1
 click==8.1.8
 cloudpathlib==0.21.0
@@ -27,11 +28,13 @@ markdown-it-py==3.0.0
 MarkupSafe==3.0.2
 mdurl==0.1.2
 murmurhash==1.0.12
+natto-py==1.0.1
 nltk==3.9.1
 numpy==1.26.4
 packaging==24.2
 pandas==2.2.3
 preshed==3.0.9
+pycparser==2.22
 pydantic==2.10.6
 pydantic_core==2.27.2
 Pygments==2.19.1
