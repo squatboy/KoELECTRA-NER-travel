@@ -1,3 +1,5 @@
+import json
+import re
 from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
 
 # 모델과 토크나이저 로드
@@ -8,16 +10,7 @@ model = AutoModelForTokenClassification.from_pretrained(model_name)
 # NER 파이프라인 생성
 ner_pipeline = pipeline("ner", model=model, tokenizer=tokenizer)
 
-# 테스트 문장
-example_text = "김민수와 정혜진이 서울에서 부산으로 출장 간다. 3월 15일부터 3월 17일까지."
-
-# 개체명 인식 수행
-ner_results = ner_pipeline(example_text)
-
-# 출력 확인
-for entity in ner_results:
-    print(entity)
-
+# 서브워드 토큰화 문제 해결 - 토큰 병합
 def merge_tokens(ner_results, text):
     merged_entities = []
     current_entity = None
@@ -42,7 +35,83 @@ def merge_tokens(ner_results, text):
 
     return merged_entities
 
-# 개체명 병합 후 출력
+# 도메인에 필요한 정보 추출 (인원, 장소, 기간, 비용)
+def extract_business_trip_info(ner_results, text):
+    """
+    NER 결과에서 출장에 필요한 정보(인원, 장소, 기간, 비용)를 추출하는 함수
+    """
+    people, locations, dates = [], [], []
+    
+    # 비용 추출: 정규표현식을 사용하여 "최대 예산은 500만원" 패턴 검색
+    cost = None
+    cost_pattern = r"최대\s*예산은\s*(\d+)\s*(만원|원)"
+    cost_match = re.search(cost_pattern, text)
+    if cost_match:
+        number = int(cost_match.group(1))
+        unit = cost_match.group(2)
+        if unit == "만원":
+            cost_value = number * 10000
+        else:
+            cost_value = number
+        cost = f"{cost_value:,}원"  # 천단위 콤마 추가
+
+    # NER 결과를 통한 정보 추출
+    for entity in merge_tokens(ner_results, text):  # 서브워드 병합된 결과 사용
+        entity_type = entity["entity"]
+        entity_value = entity["word"]
+
+        if entity_type == "PS":  # 사람(Person)
+            people.append(entity_value)
+        elif entity_type == "LC":  # 장소(Location)
+            locations.append(entity_value)
+        elif entity_type == "DT":  # 날짜(Date)
+            dates.append(entity_value)
+
+    # 날짜 처리: 시작일과 종료일 분리 (‘~’, ‘부터’, ‘까지’ 모두 고려)
+    start_date = None
+    end_date = None
+    if dates:
+        # 날짜 정보가 하나의 문자열에 모두 포함된 경우 (예: "2월15일~2월20일" 또는 "2월15일부터 2월20일까지")
+        date_text = dates[0]
+        # 우선 "~" 구분자를 확인
+        if "~" in date_text:
+            parts = date_text.split("~")
+            start_date = parts[0].strip()
+            end_date = parts[1].strip()
+        else:
+            # "부터"와 "까지" 기준으로 처리
+            if "부터" in date_text:
+                start_date = date_text.split("부터")[0].strip()
+                if "까지" in date_text:
+                    end_date = date_text.split("까지")[0].split("부터")[-1].strip()
+    # 출장 정보 정리
+    trip_info = {
+        "출장 인원": people,
+        "출장 장소": {
+            "출발지": locations[0] if locations else None,
+            "도착지": " ".join(locations[1:]) if len(locations) > 1 else None,
+        },
+        "출장 기간": {
+            "시작일": start_date,
+            "종료일": end_date,
+        },
+        "비용": cost
+    }
+
+    return trip_info
+
+# 예제 문장 변경
+example_text = "IT부서의 최명재, 신예준이 서울에서 일본 도쿄로 출장 예정이야. 2월15일부터 2월20일까지 갈예정, 최대 예산은 500만원이야."
+ner_results = ner_pipeline(example_text)  # NER 실행
+
+# 정보 추출 result
+trip_info = extract_business_trip_info(ner_results, example_text)
+
+# JSON 형식으로 보기 좋게 출력
+formatted_output = json.dumps(trip_info, indent=4, ensure_ascii=False)
+print(formatted_output)
+
+# 개체명 병합 후 출력 (디버깅용)
 merged_results = merge_tokens(ner_results, example_text)
 for entity in merged_results:
     print(entity)
