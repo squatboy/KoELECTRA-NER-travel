@@ -4,8 +4,13 @@
 <img width="420" alt="image" src="https://github.com/user-attachments/assets/85c651cd-477a-46f5-8055-9d46d84cc879" />
 </br>
 https://huggingface.co/Leo97/KoELECTRA-small-v3-modu-ner
+
+---
   
-<br>
+
+
+<img width="407" alt="image" src="https://github.com/user-attachments/assets/a55c87ad-b148-4bed-afa3-d5d14460153e" />
+
 <br>
 
 ---
